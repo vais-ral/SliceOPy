@@ -12,7 +12,8 @@ import keras.backend as K
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-sys.path.append(r'C:\Users\lhe39759\Documents\GitHub\CCPi-ML/')
+import math
+sys.path.append(r'C:\Users\lhe39759\Documents\GitHub/')
 from SliceOPy import NetSlice, DataSlice
 #dataset = make_moons(n_samples=300,noise=0.20, random_state=1)
 dataset = make_circles(n_samples=300,noise=0.20, factor=0.1,random_state=1)
@@ -27,17 +28,21 @@ x1_min = np.amin(features[:,0])
 x1_max = np.amax(features[:,0])
 x2_min = np.amin(features[:,1])
 x2_max = np.amax(features[:,1])
-
-plt.scatter(features[:,0],features[:,1],edgecolor="black",linewidth=1,c=labels)
-plt.xlabel("x1")
-plt.ylabel("x2")
-plt.colorbar()
-plt.show()
+#
+#plt.scatter(features[:,0],features[:,1],edgecolor="black",linewidth=1,c=labels)
+#plt.xlabel("x1")
+#plt.ylabel("x2")
+#plt.colorbar()
+#plt.show()
 
 netData = DataSlice.DataSlice(Features = features, Labels= labels,Shuffle=True)
-
+#netData.y_train = netData.y_train.reshape(netData.y_train.shape[0],1)
+#netData.y_test = netData.y_test.reshape(netData.y_test.shape[0],1)
+netData.oneHot(2)
+print(netData.y_train.shape)
+ 
 def weight_variable(shape):
-  initial = tf.truncated_normal(shape, stddev=0.1)
+  initial = tf.random_normal(shape)
   return tf.Variable(initial)
 
 def bias_variable(shape):
@@ -46,46 +51,27 @@ def bias_variable(shape):
 
 def buildModel():
     x = tf.placeholder(tf.float32, shape=[None, 2])
-    y_ = tf.placeholder(tf.float32, shape=[None, 1])
+    y_ = tf.placeholder(tf.float32, shape=[None, 2])
     
+   # is_training=tf.Variable(True,dtype=tf.bool)
+
+    initializer = tf.contrib.layers.xavier_initializer()
+    h0 = tf.layers.dense(x, 6, activation=tf.nn.sigmoid, kernel_initializer=initializer)
+    # h0 = tf.nn.dropout(h0, 0.95)
+    predicted = tf.layers.dense(h0, 2, activation=tf.nn.sigmoid)
     
-    x = tf.placeholder(tf.float32, [None, 2])
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=predicted)
+    cost = tf.reduce_mean(cross_entropy)
+    optimizer = tf.train.AdamOptimizer(learning_rate=0.01).minimize(cost)   
     
-    ####################
-    #Dense
-    ####################
-    W_1 = weight_variable([2, 4])
-    b_1= bias_variable([4])
-    
-    h_1 = tf.nn.tanh(tf.matmul(x, W_1) + b_1)
-    
-    W_2 = weight_variable([4, 3])
-    b_2= bias_variable([3])
-    
-    h_2 = tf.nn.tanh(tf.matmul(h_1, W_2) + b_2)
-    
-    
-    ###################
-    #Output
-    ####################
-    W_Out = weight_variable([3, 1])
-    b_Out = bias_variable([1])
-    
-    y_conv = tf.matmul(h_2, W_Out) + b_Out
-    
-    
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
-    
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-    
-    correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-    
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    correct_pred = tf.equal(tf.round(predicted), y_)
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+    return optimizer, cost,  accuracy, x, y_
 
 
-    return train_step, cross_entropy,  correct_prediction, accuracy,x,y_
+op, ls, accuracy,g ,h = buildModel()
 
-
-model = NetSlice.NetSlice(buildModel(),'tensorflow',netData)
-model.compileModel(Model=buildModel)
-model.trainModel(Epochs=10,Batch_size=10,Verbose=2)
+model = NetSlice.NetSlice(buildModel,'tensorflow',netData)
+model.compileModel(Optimizer = op, Loss = ls,Metrics = accuracy)
+model.trainModel(Epochs=1000,Batch_size=1,Verbose=2)

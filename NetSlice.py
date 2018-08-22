@@ -61,9 +61,17 @@ class NetSlice:
     
     def __init__(self,Network,Backend,dataSlice = None):
         
-        self.backend = Backend
+        #Checking backend type
+        if Backend not in ('keras','tensorflow'):
+            print("Please Enter Valid Backend, Suported Options are: 'keras', 'tensorflow'")
+            sys.exit(0)
+        else:
+            print("Using " + Backend + " Backend")
+            self.backend = Backend
+        
+        #Set Empty History dictionary
         self.history = {"loss":[],"val_loss":[]}
-        self.dataSlice = None
+        
 
         #three types of model initilisation, from custom dictionary object, Empty Model, Direct Model Input
         if type(Network) == dict:
@@ -71,15 +79,28 @@ class NetSlice:
             self.hiddenLayers = Network["HiddenLayers"]
             self.model = self.buildModel()
         elif (Network) == None:
-            print("Empty Network Created,use model.loadModel(path,custom_object) function to load model.")
+            print("Empty Network Model. Use Manual Model Loading model.loadModel(path,custom_object).")
         else:# type(Network) == type(keras.engine.training.Model):
             self.model = Network
 
-        if dataSlice!=None:
+        #DataSlice type checking
+        if type(dataSlice)== DataSlice.DataSlice:
             self.loadData(dataSlice)
+        elif dataSlice==None:
+            print("Empty DataSlice Field, Please use manual data loading (.loadData())")
+            self.dataSlice = None
+        else:
+            print("Invalid Data Type Used, Input DataSlice Type Object")
+            sys.exit(0)
+
            
     def loadData(self,dataSliceObj):
-        self.dataSlice = dataSliceObj  
+        
+        if type(dataSliceObj) != DataSlice.DataSlice:
+            print("Invalid Data Type Used, Input DataSlice Type Object")
+            sys.exit(0)
+        else:
+            self.dataSlice = dataSliceObj  
     
     def buildModel(self):
         if self.backend == 'keras':
@@ -88,7 +109,6 @@ class NetSlice:
     def loadModel(self,name,customObject):
         #Get Current Working directory
         dir_path = os.getcwd()+"\Model_Saves\\"+name
-        print(dir_path)
         if self.backend == 'keras':
             if customObject is not None:
                 self.model = keras.models.load_model(dir_path+".h5",custom_objects=customObject)
@@ -97,7 +117,10 @@ class NetSlice:
         
         with open(dir_path+ '.pkl', 'rb') as f:
             self.history = pickle.load(f)
-        
+    
+    def clearHistory(self):
+        self.history = {"loss":[],"val_loss":[]}
+
     def saveModel(self,name):
         #Get Current Working directory
         dir_path = os.getcwd()+r"\Model_Saves/"
@@ -117,7 +140,7 @@ class NetSlice:
             self.kerasCompileModel(Optimizer,Loss,Metrics)            
         #Tensor flow just reqires Model
         if self.backend=='tensorflow':
-            self.tfCompileModel(Model)
+            self.tfCompileModel(Optimizer, Loss, Metrics)
 
         
     def trainModel(self,Epochs = 100,Batch_size =None, Verbose = 2):
@@ -129,7 +152,6 @@ class NetSlice:
             # Training should return dictionary of loss ['loss'] and cross validation loss ['val_loss'] 
             if self.backend== 'keras':
                 loss, val_loss = self.kerasTrainModel(Epochs,Batch_size,Verbose)
-                print(self.history['loss'],loss)
                 self.history['loss']+= loss
                 
                 if val_loss != None:
@@ -188,11 +210,8 @@ class NetSlice:
                 data.append(np.array(item))
             
             data = np.array(data)
-            print(data.shape)
             feat , labels,shape = self.channelOrderingFormat( np.array(data[0][0]), np.array(data[0][1]),256,256)
-            print(feat.shape,labels.shape)
             loss =self.model.train_on_batch(feat,labels)
-            print("loss",loss)
 
     def predictModel(self,testData):
         if self.backend== 'keras':
@@ -209,8 +228,6 @@ class NetSlice:
     def getHistory(self):
         return self.history
 
-    def clearHistory(self):
-        self.history = []
 
     def plotLearningCurve(self,Loss_Val_Label="Validation Data",Loss_label="Training Data"):
 
@@ -330,7 +347,6 @@ class NetSlice:
         else:
             x1_min = x1_min_tr
 
-        print(x2_min,x2_min_tr,x2_min_te)
         if x1_max_tr > x1_max_te:
             x1_max = x1_max_tr
         else:
@@ -341,7 +357,6 @@ class NetSlice:
             x2_min = x2_min_te
         else:
             x2_min = x2_min_tr
-        print(x2_min,x2_min_tr,x2_min_te)
 
 
         if x2_max_tr > x2_max_te:
@@ -369,51 +384,58 @@ class NetSlice:
 
 ###################################
         
-    def tfCompileModel(self,Model):
-        #tf.InteractiveSession.close()
-        self.Session = tf.InteractiveSession()
-        self.Optimizer,self.Loss,self.Correct_Prediction, self.Metrics ,self.x,self.y= Model()
+    def tfCompileModel(self,Optimizer,Loss,Metrics):
+        self.Optimizer = Optimizer
+        self.Loss = Loss
+        self.Metrics = Metrics
         
     def tfTrainModel(self,Epochs,BatchSize,Verbose):
         
-        init_op = tf.global_variables_initializer()
-#        with self.Session as sess:
-            # initialise the variables
-        self.Session.run(init_op)
-        total_batch = int(self.dataSlice.X_train.shape[0]/BatchSize)
-        for epoch in range(Epochs):
-            avg_cost = 0
-            for i in range(total_batch):
-                
-                batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
-                
-                _, c = self.Session.run([self.Optimizer, self.Loss], 
-                                feed_dict={self.x: batch_x, self.y: batch_y})
-                avg_cost += c / total_batch
-            test_acc = self.Session.run(self.Metrics, 
-                           feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test})
-            print("Epoch:", str(epoch + 1), "cost =", "{:.3f}".format(avg_cost), "test accuracy: ","{:.3f}".format(test_acc))
+#        init_op = tf.global_variables_initializer()
+##        with self.Session as sess:
+#            # initialise the variables
+#        self.Session.run(init_op)
+#        total_batch = int(self.dataSlice.X_train.shape[0]/BatchSize)
+#        for epoch in range(Epochs):
+#            avg_cost = 0
+#            for i in range(total_batch):
+#                
+#                batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
+#                
+#                _, c = self.Session.run([self.Optimizer, self.Loss], 
+#                                feed_dict={self.x: batch_x, self.y: batch_y})
+#                avg_cost += c / total_batch
+#                print(i,c,batch_x.shape,total_batch)
+#            test_acc = self.Session.run(self.Metrics, 
+#                           feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test})
+#            print("Epoch:", str(epoch + 1), "cost =", "{:.3f}".format(avg_cost), "test accuracy: ","{:.3f}".format(test_acc))
+#    
+#        print("\nTraining complete!")
+#        print(self.Session.run(self.Metrics, feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test}))
+#
+
+
+#        self.Session.close()
+        a,s,d,x,y_ = self.model()
+
+        init = tf.global_variables_initializer()
+                    
+        with tf.Session() as sess:
     
-        print("\nTraining complete!")
-        print(self.Session.run(self.Metrics, feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test}))
-
-
-
-        self.Session.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        # Run the initializer
+            sess.run(init)
+        
+            for step in range(1, Epochs+1):
+                batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
+                # Run optimization op (backprop)
+                sess.run(self.Optimizer, feed_dict={x: batch_x, y_: batch_y})
+                if step % 10:
+                    # Calculate batch loss and accuracy
+                    metrics = [self.Loss] + self.Metrics
+                    losser, acc = sess.run(metrics, feed_dict={x: batch_x,y_: batch_y})
+                    print("Step " + str(step) + ", Minibatch Loss= " + \
+                          "{:.4f}".format(losser) + ", Training Accuracy= " + \
+                          "{:.3f}".format(acc))
 
 
 
