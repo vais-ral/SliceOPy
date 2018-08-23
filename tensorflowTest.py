@@ -50,6 +50,7 @@ def bias_variable(shape):
   return tf.Variable(initial)
 
 def buildModel():
+    
     x = tf.placeholder(tf.float32, shape=[None, 2])
     y_ = tf.placeholder(tf.float32, shape=[None, 2])
     
@@ -60,18 +61,29 @@ def buildModel():
     # h0 = tf.nn.dropout(h0, 0.95)
     predicted = tf.layers.dense(h0, 2, activation=tf.nn.sigmoid)
     
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=predicted)
+
+    return x,y_,predicted,[]
+
+def Loss(out,pred,*kwargs):
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=out, logits=pred)
     cost = tf.reduce_mean(cross_entropy)
+    return cost
+
+def Optimizer(cost,*kwargs):
+
     optimizer = tf.train.AdamOptimizer(learning_rate=0.01).minimize(cost)   
+    return optimizer
+
+def Accuracy(lab,pred,*kwargs): 
     
-    correct_pred = tf.equal(tf.round(predicted), y_)
+    correct_pred = tf.equal(tf.round(pred), lab)
     accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    
+    return accuracy
 
-    return optimizer, cost,  accuracy, x, y_
 
-
-op, ls, accuracy,g ,h = buildModel()
+#op, ls, accuracy,g ,h = buildModel()
 
 model = NetSlice.NetSlice(buildModel,'tensorflow',netData)
-model.compileModel(Optimizer = op, Loss = ls,Metrics = accuracy)
-model.trainModel(Epochs=1000,Batch_size=1,Verbose=2)
+model.compileModel(Optimizer = Optimizer, Loss = Loss, Metrics = Accuracy)
+model.trainModel(Epochs=1000,Batch_size=10,Verbose=2)

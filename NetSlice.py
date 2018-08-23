@@ -81,8 +81,10 @@ class NetSlice:
         elif (Network) == None:
             print("Empty Network Model. Use Manual Model Loading model.loadModel(path,custom_object).")
         else:# type(Network) == type(keras.engine.training.Model):
-            self.model = Network
-
+            if self.backend == 'keras':
+                self.model = Network
+            elif self.backend == 'tensorflow':
+                self.buildTensorFlowModel(Network)
         #DataSlice type checking
         if type(dataSlice)== DataSlice.DataSlice:
             self.loadData(dataSlice)
@@ -383,11 +385,15 @@ class NetSlice:
 ### TensorFlow Backend ############
 
 ###################################
-        
+    def buildTensorFlowModel(self,Network):
+        self.features, self.labels, self.logits, self.modelKwargs = Network()
+
+
+
     def tfCompileModel(self,Optimizer,Loss,Metrics):
-        self.Optimizer = Optimizer
-        self.Loss = Loss
-        self.Metrics = Metrics
+        self.Loss = Loss(self.labels,self.logits,self.modelKwargs)
+        self.Optimizer = Optimizer(self.Loss,self.modelKwargs)
+        self.Metrics = Metrics(self.labels,self.logits,self.modelKwargs)
         
     def tfTrainModel(self,Epochs,BatchSize,Verbose):
         
@@ -413,26 +419,28 @@ class NetSlice:
 #        print("\nTraining complete!")
 #        print(self.Session.run(self.Metrics, feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test}))
 #
-
-
 #        self.Session.close()
-        a,s,d,x,y_ = self.model()
 
+
+        
         init = tf.global_variables_initializer()
-                    
+        
         with tf.Session() as sess:
-    
+            tf.initialize_all_variables().run()
+
         # Run the initializer
             sess.run(init)
         
             for step in range(1, Epochs+1):
                 batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
                 # Run optimization op (backprop)
-                sess.run(self.Optimizer, feed_dict={x: batch_x, y_: batch_y})
+                print(batch_x.shape,batch_y.shape)
+                sess.run(self.Optimizer, feed_dict={self.features: batch_x, self.labels: batch_y})
+                
                 if step % 10:
                     # Calculate batch loss and accuracy
-                    metrics = [self.Loss] + self.Metrics
-                    losser, acc = sess.run(metrics, feed_dict={x: batch_x,y_: batch_y})
+                    metrics = [self.Loss] + [self.Metrics]
+                    losser, acc = sess.run(metrics, feed_dict={self.features: batch_x, self.labels: batch_y})
                     print("Step " + str(step) + ", Minibatch Loss= " + \
                           "{:.4f}".format(losser) + ", Training Accuracy= " + \
                           "{:.3f}".format(acc))
