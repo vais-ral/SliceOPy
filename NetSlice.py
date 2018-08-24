@@ -113,6 +113,7 @@ class NetSlice:
         dir_path = os.getcwd()+"\Model_Saves\\"+name
         if self.backend == 'keras':
             if customObject is not None:
+                print(dir_path)
                 self.model = keras.models.load_model(dir_path+".h5",custom_objects=customObject)
             else:
                 self.model = keras.models.load_model(dir_path+".h5")                
@@ -214,7 +215,35 @@ class NetSlice:
             data = np.array(data)
             feat , labels,shape = self.channelOrderingFormat( np.array(data[0][0]), np.array(data[0][1]),256,256)
             loss =self.model.train_on_batch(feat,labels)
+            
+            self.history['loss'].append(loss)
+        
+    def generativeDataTesting(self,dataGenFunc, SampleNumber=100,Threshold=1.0e-4):
 
+        feat = []
+        labels = []
+        for i in range(0,SampleNumber):
+            item = dataGenFunc()
+            feat.append(item[0])
+            labels.append(item[1])
+            
+        feat = np.array(feat).reshape(len(feat),256,256)
+        labels = np.array(labels).reshape(len(feat),256,256)
+        feat , labels,shape = self.channelOrderingFormat(feat,labels,256,256)            
+        predicted = self.predictModel(feat)
+        self.segmentationAccuracy(predicted,labels,Threshold)
+    
+    
+    def segmentationAccuracy(self, predicted, labels,threshold):
+        
+        counter = np.subtract(predicted,labels)
+        counter = np.abs(counter) < threshold
+        counter = counter.flatten()
+        positive = np.sum(counter)
+        print((positive/counter.shape[0]))
+        
+        
+        
     def predictModel(self,testData):
         if self.backend== 'keras':
             return self.kerasPrecictModel(testData)
