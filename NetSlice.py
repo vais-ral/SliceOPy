@@ -1,149 +1,93 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  9 10:19:08 2018
-
-@author: lhe39759
-"""
-#import tensorflow as tf
-import keras
 import numpy as np
 import matplotlib.pyplot as plt
-import keras.backend as K
-import tensorflow as tf
 import sys
 import os
-sys.path.append(r'$HOME\Documents/Programming/Python/CCPi-ML/')
-from SliceOPy import  DataSlice
+from .DataSlice import DataSlice
 import pickle
 
 class NetSlice:
 
-#""" Model Building
-#    Choice of backends are: 'keras' 
-#    
-#    Network input should have structure of
-#    
-#    {"Input": tuple for convolution input (width,height,channels), int for data,
-#    "HiddenLayers": List of hiddenlayers see below for structure, avalible options are:
-#        Convolution ->
-#        
-#         {"Type": 'Conv2D',
-#            "Width": Layer Width, int E.G 10
-#            "Activation": Activation type E.G "relu","tanh","sigmoid",
-#            "Kernel": Kernal Size, tuple E.G (3,3)
-#            }
-#        Dense ->
-#        
-#         {"Type": 'Dense',
-#            "Width": Layer Width, int E.G 10,
-#            "Activation":  Activation type E.G "relu","tanh","sigmoid""
-#            }
-#         
-#        Dropout ->
-#            {"Type": 'Dropout,
-#            "Ratio": Ratio of neurons to drop out, float E.G 0.7
-#            }
-#        
-#        Pooling -> 
-#        {"Type": 'Pooling',
-#        "kernal": Kernal Size, tuple E.G (3,3)}
-#        "dim": dimensions of dropout, int E.G 1,2,3
-#
-#        } 
-#   
-#       Flatten - >
-#        {"Type": 'Flatten,
-#        } 
-#    }    
-#
-#    """
-#CANT HAVE FLATTERN AS FIRST LAYER YET    
-    
-    def __init__(self,Network,Backend,dataSlice = None):
+    def __init__(self,Network,Backend, Data_Slice = None,History_Keys = ["loss","val_loss"]):
         
         #Checking backend type
-        if Backend not in ('keras','tensorflow'):
-            print("Please Enter Valid Backend, Suported Options are: 'keras', 'tensorflow'")
+        if Backend not in ('keras'):
+            sys.stderr.write("Please Enter Valid Backend, Suported Options are: 'keras'\n")
             sys.exit(0)
         else:
-            print("Using " + Backend + " Backend")
-            self.backend = Backend
+            os.environ['SLICE_BACKEND'] = "keras"
+            global S
+            from . import backends as S
         
+        self.historyKeys = History_Keys
         #Set Empty History dictionary
-        self.history = {"loss":[],"val_loss":[]}
+        self.history = {}
+        for item in self.historyKeys:
+            self.history[item] = []
+            
         
-
         #three types of model initilisation, from custom dictionary object, Empty Model, Direct Model Input
         if type(Network) == dict:
             self.input = Network["Input"]
             self.hiddenLayers = Network["HiddenLayers"]
             self.model = self.buildModel()
         elif (Network) == None:
-            print("Empty Network Model. Use Manual Model Loading model.loadModel(path,custom_object).")
+            sys.stderr.write("Empty Network Model. Use Manual Model Loading model.loadModel(path,custom_object)\n")
         else:# type(Network) == type(keras.engine.training.Model):
-            if self.backend == 'keras':
-                self.model = Network
-            elif self.backend == 'tensorflow':
-                self.buildTensorFlowModel(Network)
+            self.model = S.userBuildModel(Network)
+
         #DataSlice type checking
-        if type(dataSlice)== DataSlice.DataSlice:
-            self.loadData(dataSlice)
-        elif dataSlice==None:
-            print("Empty DataSlice Field, Please use manual data loading (.loadData())")
+        if type(Data_Slice)== DataSlice:
+            self.loadData(Data_Slice)
+        elif Data_Slice==None:
+            sys.stderr.write("Empty DataSlice Field, Please use manual data loading (.loadData())\n")
             self.dataSlice = None
         else:
-            print("Invalid Data Type Used, Input DataSlice Type Object")
+            sys.stderr.write("Invalid Data Type Used, Input DataSlice Type Object\n")
             sys.exit(0)
-
            
     def loadData(self,dataSliceObj):
-        
-        if type(dataSliceObj) != DataSlice.DataSlice:
-            print("Invalid Data Type Used, Input DataSlice Type Object")
+        if type(dataSliceObj) != DataSlice:
+            sys.stderr.write("Invalid Data Type Used, Input DataSlice Type Object\n")
             sys.exit(0)
         else:
             self.dataSlice = dataSliceObj  
     
     def buildModel(self):
-        if self.backend == 'keras':
-            return self.kerasModelBackend()
+            return S.ModelBackend(self,self.hiddenLayers)
  
     def loadModel(self,name,customObject):
         #Get Current Working directory
         dir_path = os.getcwd()+"\Model_Saves\\"+name
-        if self.backend == 'keras':
-            if customObject is not None:
-                print(dir_path)
-                self.model = keras.models.load_model(dir_path+".h5",custom_objects=customObject)
-            else:
-                self.model = keras.models.load_model(dir_path+".h5")                
         
+        self.model = S.userLoadModel(dir_path,name,customObject)
+
         with open(dir_path+ '.pkl', 'rb') as f:
             self.history = pickle.load(f)
     
+        #load historyKeys from history loaded
+        self.historyKeys = list(self.history.keys())
+
     def clearHistory(self):
-        self.history = {"loss":[],"val_loss":[]}
+        for item in self.historyKeys:
+            self.history[item] = []
 
     def saveModel(self,name):
         #Get Current Working directory
         dir_path = os.getcwd()+r"\Model_Saves/"
+  
         #Check if directory exisits, create if not
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
+  
         #Save model in directory
-        if self.backend == 'keras':
-            self.model.save(dir_path+name+".h5")
-        #Save history
-        
+        S.userSaveModel(self.model,dir_path+name+".h5")
+
+        #Save history 
         with open(dir_path+name+ '.pkl', 'wb') as f:
             pickle.dump(self.history, f, pickle.HIGHEST_PROTOCOL)
         
-    def compileModel(self,Optimizer=None, Loss=None, Metrics= None ,Model=None):
-        if self.backend== 'keras':
-            self.kerasCompileModel(Optimizer,Loss,Metrics)            
-        #Tensor flow just reqires Model
-        if self.backend=='tensorflow':
-            self.tfCompileModel(Optimizer, Loss, Metrics)
+    def compileModel(self,Optimizer=None, Loss=None, Metrics= None ,Model=None):     
+        S.userCompileModel(self.model,Optimizer,Loss,Metrics)            
 
         
     def trainModel(self,Epochs = 100,Batch_size =None, Verbose = 2):
@@ -152,20 +96,10 @@ class NetSlice:
             #If batch size is none set batch size ot size of training dataset
             if Batch_size is None:
                 Batch_size = self.dataSlice.X_train.shape[0]
-            # Training should return dictionary of loss ['loss'] and cross validation loss ['val_loss'] 
-            if self.backend== 'keras':
-                loss, val_loss = self.kerasTrainModel(Epochs,Batch_size,Verbose)
-                self.history['loss']+= loss
-                
-                if val_loss != None:
-                    self.history['val_loss']+= val_loss
-                else: 
-                    self.history['val_loss'] = None
-                
-            elif self.backend == 'tensorflow':
-                
-                self.tfTrainModel(Epochs,Batch_size,Verbose)
 
+            # Training should return dictionary of loss ['loss'] and cross validation loss ['val_loss'] 
+            self.history = S.userTrainModel(self.model,self.dataSlice,Epochs,Batch_size,Verbose,self.historyKeys)
+            
         else:
             print("Please load data into model first using model.loadData(dataSlice)")
         
@@ -213,8 +147,8 @@ class NetSlice:
                 data.append(np.array(item))
             
             data = np.array(data)
-            feat , labels,shape = self.channelOrderingFormat( np.array(data[0][0]), np.array(data[0][1]),256,256)
-            loss =self.model.train_on_batch(feat,labels)
+            feat , labels,shape = S.channelOrderingFormat( np.array(data[0][0]), np.array(data[0][1]),256,256)
+            loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
         
@@ -229,7 +163,7 @@ class NetSlice:
             
         feat = np.array(feat).reshape(len(feat),256,256)
         labels = np.array(labels).reshape(len(feat),256,256)
-        feat , labels,shape = self.channelOrderingFormat(feat,labels,256,256)            
+        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)            
         predicted = self.predictModel(feat)
         self.segmentationAccuracy(predicted,labels,Threshold)
     
@@ -245,119 +179,36 @@ class NetSlice:
         
         
     def predictModel(self,testData):
-        if self.backend== 'keras':
-            return self.kerasPrecictModel(testData)
+        return S.userPrecictModel(self.model,testData)
 
     def summary(self):
-        if self.backend== 'keras':
-            return self.model.summary()
+        return S.userSummary(self.model)
     
     def gpuCheck(self):
-        if self.backend== 'keras':
-            keras.backend.tensorflow_backend._get_available_gpus()
+        S.userGPUCheck()
     
     def getHistory(self):
         return self.history
 
 
-    def plotLearningCurve(self,Loss_Val_Label="Validation Data",Loss_label="Training Data"):
+    def plotLearningCurve(self,Axes,Plot_Dict=None):
 
-        loss = []
-        val_loss = []
+        for key in Plot_Dict.keys():
+            if key in self.history.keys():
+                data = self.history[key]
+                Axes.plot(np.arange(0,len(data),1),data,label=Plot_Dict[key])
 
-        if self.backend== 'keras':
-            loss,val_loss = self.kerasGetHistory()
+        Axes.set_xlabel('Epoch')
+        Axes.set_ylabel('Loss')
+        Axes.legend()
 
-        epochs = np.arange(0,len(loss),1)
-
-        plt.plot(epochs,loss,label=Loss_label)
-
-        if val_loss != None:
-            plt.plot(epochs,val_loss,label=Loss_Val_Label)
-
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.legend()
-
-        plt.show()
-
-
-##################################       
-        
-### Keras Backend ############
-
-##################################
-    def channelOrderingFormat(self,Feat_train,Feat_test,img_rows,img_cols):
-        if keras.backend.image_data_format() == 'channels_first':
-            Feat_train = Feat_train.reshape(Feat_train.shape[0], 1, img_rows, img_cols)
-            Feat_test = Feat_test.reshape(Feat_test.shape[0], 1, img_rows, img_cols)
-            input_shape = (1, img_rows, img_cols)
-        else:
-            Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, 1)
-            Feat_test = Feat_test.reshape(Feat_test.shape[0], img_rows, img_cols, 1)
-            input_shape = (img_rows, img_cols, 1)  
-        return Feat_train, Feat_test, input_shape
-    
-    def kerasModelBackend(self):
-            layers = []
-            #Input layer
-            print('num',len(self.hiddenLayers))
-
-            dataModifier = False
-
-            for layer in range(0,len(self.hiddenLayers)):    
-                print('type',self.hiddenLayers[layer]["Type"])
-                #Check for first layer to deal with input shape
-                
-                if layer == 0 or dataModifier:
-                    #Convolution first layer
-                    if self.hiddenLayers[layer]["Type"] == "Conv2D":
-                        layers.append(keras.layers.Conv2D(self.hiddenLayers[layer]["Width"], self.hiddenLayers[layer]["Kernel"], input_shape=(self.input),padding="same",data_format= keras.backend.image_data_format(),activation=self.hiddenLayers[layer]["Activation"]))
-                        dataModifier = False
-                    #Dense first layer
-                    elif self.hiddenLayers[layer]["Type"] == "Dense":
-                        layers.append(keras.layers.Dense(self.hiddenLayers[layer]["Width"],input_dim=(self.input),kernel_initializer='normal', activation=self.hiddenLayers[layer]["Activation"]))
-                        dataModifier = False
-                    elif self.hiddenLayers[layer]["Type"] == "Flatten":
-                        layers.append(keras.layers.Flatten())
-                        dataModifier = True
-
-                else:
-                # 0 = convo2D 1 = dense 2 =Dropout, 3 = pooling, 4 = flatten 
-                    if self.hiddenLayers[layer]["Type"] == "Conv2D":
-                        layers.append(keras.layers.Conv2D(self.hiddenLayers[layer]["Width"], self.hiddenLayers[layer]["Kernel"], padding="same",data_format= keras.backend.image_data_format(),activation=self.hiddenLayers[layer]["Activation"]))
-                    elif self.hiddenLayers[layer]["Type"] == "Dense":
-                        layers.append(keras.layers.Dense(self.hiddenLayers[layer]["Width"],kernel_initializer='normal', activation=self.hiddenLayers[layer]["Activation"]))       
-                    elif self.hiddenLayers[layer]["Type"] == "Dropout":
-                        layers.append(keras.layers.Dropout(self.hiddenLayers[layer]["Ratio"]))    
-                    elif self.hiddenLayers[layer]["Type"] == "Pool":
-                        layers.append(keras.layers.MaxPooling2D(pool_size=self.hiddenLayers[layer]["Kernal"],data_format= keras.backend.image_data_format()))
-                    elif self.hiddenLayers[layer]["Type"] == "Flatten":
-                        layers.append(keras.layers.Flatten())
-            return keras.Sequential(layers)               
-
-
-    def kerasCompileModel(self,Optimizer,Loss,Metrics):
-        self.model.compile(optimizer=Optimizer, loss=Loss, metrics=Metrics)
-        
-    def kerasTrainModel(self,Epochs,BatchSize,Verbose):
-        history = self.model.fit(self.dataSlice.X_train, self.dataSlice.y_train, validation_data=(self.dataSlice.X_test,self.dataSlice.y_test), batch_size=BatchSize,epochs=Epochs, verbose=Verbose)
-        
-        if 'val_loss' in history.history:
-            return history.history['loss'], history.history['val_loss']
-        else:
-            return history.history['loss'], None
-
-    def kerasPrecictModel(self,testData):
-        return self.model.predict(testData)
-           
-    def kerasGetHistory(self):
-        return self.history['loss'],self.history['val_loss']
+        return Axes
 
 
     
-    def contourPlot(self):
-        
+    def contourPlot(self,Axes):
+
+
         x1_min_tr = np.amin(self.dataSlice.X_train[:,0])
         x1_max_tr = np.amax(self.dataSlice.X_train[:,0])
         x2_min_tr = np.amin(self.dataSlice.X_train[:,1])
@@ -400,84 +251,56 @@ class NetSlice:
         z = self.predictModel(np.c_[xx.ravel(),yy.ravel()])
         z = z.reshape(xx.shape)
         
-        plt.contour(xx,yy,z)
-        plt.scatter(self.dataSlice.X_train[:,0],self.dataSlice.X_train[:,1],c=self.dataSlice.y_train)
-        plt.xlabel('x1')
-        plt.ylabel('x2')
-        plt.colorbar()
-        plt.show()
+        Axes.contour(xx,yy,z)
+        Axes.scatter(self.dataSlice.X_train[:,0],self.dataSlice.X_train[:,1],c=self.dataSlice.y_train)
+        Axes.set_xlabel('x1')
+        Axes.set_ylabel('x2')
+        return Axes
 
 
 
-###################################      
-        
-### TensorFlow Backend ############
 
-###################################
-    def buildTensorFlowModel(self,Network):
-        self.features, self.labels, self.logits, self.modelKwargs = Network()
-
-
-
-    def tfCompileModel(self,Optimizer,Loss,Metrics):
-        self.Loss = Loss(self.labels,self.logits,self.modelKwargs)
-        self.Optimizer = Optimizer(self.Loss,self.modelKwargs)
-        self.Metrics = Metrics(self.labels,self.logits,self.modelKwargs)
-        
-    def tfTrainModel(self,Epochs,BatchSize,Verbose):
-        
-#        init_op = tf.global_variables_initializer()
-##        with self.Session as sess:
-#            # initialise the variables
-#        self.Session.run(init_op)
-#        total_batch = int(self.dataSlice.X_train.shape[0]/BatchSize)
-#        for epoch in range(Epochs):
-#            avg_cost = 0
-#            for i in range(total_batch):
-#                
-#                batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
-#                
-#                _, c = self.Session.run([self.Optimizer, self.Loss], 
-#                                feed_dict={self.x: batch_x, self.y: batch_y})
-#                avg_cost += c / total_batch
-#                print(i,c,batch_x.shape,total_batch)
-#            test_acc = self.Session.run(self.Metrics, 
-#                           feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test})
-#            print("Epoch:", str(epoch + 1), "cost =", "{:.3f}".format(avg_cost), "test accuracy: ","{:.3f}".format(test_acc))
+#""" Model Building
+#    Choice of backends are: 'keras' 
 #    
-#        print("\nTraining complete!")
-#        print(self.Session.run(self.Metrics, feed_dict={self.x: self.dataSlice.X_test, self.y: self.dataSlice.y_test}))
+#    Network input should have structure of
+#    
+#    {"Input": tuple for convolution input (width,height,channels), int for data,
+#    "HiddenLayers": List of hiddenlayers see below for structure, avalible options are:
+#        Convolution ->
+#        
+#         {"Type": 'Conv2D',
+#            "Width": Layer Width, int E.G 10
+#            "Activation": Activation type E.G "relu","tanh","sigmoid",
+#            "Kernel": Kernal Size, tuple E.G (3,3)
+#            }
+#        Dense ->
+#        
+#         {"Type": 'Dense',
+#            "Width": Layer Width, int E.G 10,
+#            "Activation":  Activation type E.G "relu","tanh","sigmoid""
+#            }
+#         
+#        Dropout ->
+#            {"Type": 'Dropout,
+#            "Ratio": Ratio of neurons to drop out, float E.G 0.7
+#            }
+#        
+#        Pooling -> 
+#        {"Type": 'Pooling',
+#        "kernal": Kernal Size, tuple E.G (3,3)}
+#        "dim": dimensions of dropout, int E.G 1,2,3
 #
-#        self.Session.close()
-
-
-        
-        init = tf.global_variables_initializer()
-        
-        with tf.Session() as sess:
-            tf.initialize_all_variables().run()
-
-        # Run the initializer
-            sess.run(init)
-        
-            for step in range(1, Epochs+1):
-                batch_x, batch_y = self.dataSlice.getRandomBatch(BatchSize)
-                # Run optimization op (backprop)
-                print(batch_x.shape,batch_y.shape)
-                sess.run(self.Optimizer, feed_dict={self.features: batch_x, self.labels: batch_y})
-                
-                if step % 10:
-                    # Calculate batch loss and accuracy
-                    metrics = [self.Loss] + [self.Metrics]
-                    losser, acc = sess.run(metrics, feed_dict={self.features: batch_x, self.labels: batch_y})
-                    print("Step " + str(step) + ", Minibatch Loss= " + \
-                          "{:.4f}".format(losser) + ", Training Accuracy= " + \
-                          "{:.3f}".format(acc))
-
-
-
-
-
+#        } 
+#   
+#       Flatten - >
+#        {"Type": 'Flatten,
+#        } 
+#    }    
+#
+#    """
+#CANT HAVE FLATTERN AS FIRST LAYER YET    
+    
 
 
 
