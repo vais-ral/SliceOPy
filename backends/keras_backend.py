@@ -35,17 +35,15 @@ def channelOrderingFormat(self,Feat_train,Feat_test,img_rows,img_cols):
 def userCompileModel(model,Optimizer,Loss,Metrics):
     model.compile(optimizer=Optimizer, loss=Loss, metrics=Metrics)
     
-def userTrainModel(model,dataSlice,Epochs,BatchSize,Verbose,historyKeys):
+def userTrainModel(model,dataSlice,Epochs,BatchSize,Verbose,historyKeys,historySave):
     history = model.fit(dataSlice.X_train, dataSlice.y_train, validation_data=(dataSlice.X_test,dataSlice.y_test), batch_size=BatchSize,epochs=Epochs, verbose=Verbose)
-    keras_history = {}
     for item in historyKeys:
         if item in history.history.keys():
-            keras_history[item] = history.history[item]
+            historySave[item] =historySave[item]+history.history[item]
         else:
-            keras_history[item] = []
             sys.stderr.write("Key: "+ item+" does not exist in keras history \n")
 
-    return keras_history
+    return historySave
 
 def userTrainOnBagch(model,feat,labels):
     return model.train_on_batch(feat,labels)

@@ -98,7 +98,7 @@ class NetSlice:
                 Batch_size = self.dataSlice.X_train.shape[0]
 
             # Training should return dictionary of loss ['loss'] and cross validation loss ['val_loss'] 
-            self.history = S.userTrainModel(self.model,self.dataSlice,Epochs,Batch_size,Verbose,self.historyKeys)
+            self.history = S.userTrainModel(self.model,self.dataSlice,Epochs,Batch_size,Verbose,self.historyKeys,self.history)
             
         else:
             print("Please load data into model first using model.loadData(dataSlice)")
