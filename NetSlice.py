@@ -142,12 +142,15 @@ class NetSlice:
 
         for epoch in range(1,Epochs):
             data = []
-            for i in range(0,BatchSize):
-                item = dataGenFunc()
-                data.append(np.array(item))
+#            for i in range(0,BatchSize):
+#                item = dataGenFunc()
+#                data.append(np.array(item))
             
-            data = np.array(data)
-            feat , labels,shape = S.channelOrderingFormat( np.array(data[0][0]), np.array(data[0][1]),256,256)
+            feat, labels = dataGenFunc()
+            print(feat.shape,labels.shape)
+            feat , labels,shape = S.channelOrderingFormat(feat, labels,256,256)
+            print(feat.shape,labels.shape)
+            labels = np.array([labels])
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
