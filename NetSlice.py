@@ -57,15 +57,23 @@ class NetSlice:
  
     def loadModel(self,name,customObject):
         #Get Current Working directory
-        dir_path = os.getcwd()+"\Model_Saves\\"+name
+        dir_path = os.getcwd()+"/Model_Saves/"+name
         
         self.model = S.userLoadModel(dir_path,name,customObject)
 
-        with open(dir_path+ '.pkl', 'rb') as f:
-            self.history = pickle.load(f)
-    
-        #load historyKeys from history loaded
-        self.historyKeys = list(self.history.keys())
+        try:
+            with open(dir_path+ '.pkl', 'rb') as f:
+                self.history = pickle.load(f)
+        
+            #load historyKeys from history loaded
+                self.historyKeys = list(self.history.keys())
+        except FileNotFoundError:
+        # doesn't existprint()
+            print("No History")
+        else:
+            print("No History")
+
+
 
     def clearHistory(self):
         for item in self.historyKeys:
@@ -73,7 +81,7 @@ class NetSlice:
 
     def saveModel(self,name):
         #Get Current Working directory
-        dir_path = os.getcwd()+r"\Model_Saves/"
+        dir_path = os.getcwd()+"/Model_Saves/"
   
         #Check if directory exisits, create if not
         if not os.path.exists(dir_path):
@@ -138,25 +146,29 @@ class NetSlice:
                 self.saveModel(saveAll)
         
         
-    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100):
+    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering=None):
 
-        for epoch in range(1,Epochs):
-            data = []
-#            for i in range(0,BatchSize):
-#                item = dataGenFunc()
-#                data.append(np.array(item))
+        for epoch in range(0,Epochs):
+            feat = []
+            labels = []
             
-            feat, labels = dataGenFunc()
-            print(feat.shape,labels.shape)
-            feat , labels,shape = S.channelOrderingFormat(feat, labels,256,256)
-            print(feat.shape,labels.shape)
-            labels = np.array([labels])
+            for i in range(0,BatchSize):
+                item = dataGenFunc()
+                feat.append(item[0])
+                labels.append(item[1])
+                
+            feat = np.array(feat)
+            labels= np.array(labels)
+            
+            if Channel_Ordering != None:
+                feat , labels,shape = S.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
+            print("Epochs:",epoch+1, " Loss:",loss)
         
-    def generativeDataTesting(self,dataGenFunc, SampleNumber=100,Threshold=1.0e-4):
-
+    def generativeDataTesting(self,dataGenFunc, SampleNumber=100,Threshold=1.0e-4, Channel_Ordering=None):
+#
         feat = []
         labels = []
         for i in range(0,SampleNumber):
@@ -164,10 +176,22 @@ class NetSlice:
             feat.append(item[0])
             labels.append(item[1])
             
-        feat = np.array(feat).reshape(len(feat),256,256)
-        labels = np.array(labels).reshape(len(feat),256,256)
-        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)            
+        feat = np.array(feat)
+        labels= np.arrray(labels)
+        
+        if Channel_Ordering != None:
+            feat , labels,shape = S.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+#
+#        feat = np.array(feat).reshape(len(feat),256,256)
+#        labels = np.array(labels).reshape(len(feat),256,256)
+#        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)            
         predicted = self.predictModel(feat)
+        fig = plt.figure()
+        ax = fig.add_subplot(121)
+        ax.imshow(featOrig[0])
+        ax = fig.add_subplot(122)
+        ax.imshow(predicted[0].reshape(256,256))
+        plt.show()
         self.segmentationAccuracy(predicted,labels,Threshold)
     
     
