@@ -177,21 +177,26 @@ class NetSlice:
             labels.append(item[1])
             
         feat = np.array(feat)
-        labels= np.arrray(labels)
+        labels= np.array(labels)
         
         if Channel_Ordering != None:
             feat , labels,shape = S.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
 #
 #        feat = np.array(feat).reshape(len(feat),256,256)
 #        labels = np.array(labels).reshape(len(feat),256,256)
-#        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)            
+#        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)  
         predicted = self.predictModel(feat)
-        fig = plt.figure()
-        ax = fig.add_subplot(121)
-        ax.imshow(featOrig[0])
-        ax = fig.add_subplot(122)
-        ax.imshow(predicted[0].reshape(256,256))
-        plt.show()
+        print(feat[0].shape,labels[0].shape,predicted[0].shape)
+
+#        fig = plt.figure()
+#        ax = fig.add_subplot(131)
+#        ax.imshow(feat[0].reshape(256,256))
+#        ax = fig.add_subplot(132)
+#        ax.imshow(predicted[0].reshape(256,256))
+#        ax = fig.add_subplot(133)
+#
+#        ax.imshow(labels[0].reshape(256,256))
+#        plt.show()
         self.segmentationAccuracy(predicted,labels,Threshold)
     
     
