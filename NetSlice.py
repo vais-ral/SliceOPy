@@ -23,7 +23,7 @@ class NetSlice:
         self.history = {}
         for item in self.historyKeys:
             self.history[item] = []
-            
+  
         
         #three types of model initilisation, from custom dictionary object, Empty Model, Direct Model Input
         if type(Network) == dict:
@@ -34,7 +34,6 @@ class NetSlice:
             sys.stderr.write("Empty Network Model. Use Manual Model Loading model.loadModel(path,custom_object)\n")
         else:# type(Network) == type(keras.engine.training.Model):
             self.model = S.userBuildModel(Network)
-
         #DataSlice type checking
         if type(Data_Slice)== DataSlice:
             self.loadData(Data_Slice)
@@ -42,8 +41,9 @@ class NetSlice:
             sys.stderr.write("Empty DataSlice Field, Please use manual data loading (.loadData())\n")
             self.dataSlice = None
         else:
-            sys.stderr.write("Invalid Data Type Used, Input DataSlice Type Object\n")
-            sys.exit(0)
+            self.loadData(Data_Slice)
+#            sys.stderr.write("Invalid Data Type Used, Input DataSlice Type Object\n")
+#            sys.exit(0)
            
     def loadData(self,dataSliceObj):
         if type(dataSliceObj) != DataSlice:

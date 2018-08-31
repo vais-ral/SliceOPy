@@ -19,7 +19,7 @@ class DataSlice:
         self.Shuffle = Shuffle
         self.Rebalance = Rebalance
         self.Split_Ratio = Split_Ratio
-        print(Features.shape,Labels.shape)
+
         if Features is not None and Labels is not None:
 
             if info:
@@ -137,12 +137,12 @@ class DataSlice:
 
     def convertOneHot(self,labels,out):
         label = np.zeros((labels.shape[0],out),dtype=np.float32)
-        print(labels.shape,out.shape)
         for i in range(0,len(labels)):
             if labels[i] == 0:
-                label[i,:] = np.array([0,1])
+                label[i,labels[i]] = 1
             else:
-                label[i,:] = np.array([1,0])
+                label[i,labels[i]] = 1
+
         return label
     
 
