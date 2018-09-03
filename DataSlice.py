@@ -44,11 +44,11 @@ class DataSlice:
 
 
             if Channel_Features != None:
-                self.channelOrderingFormatFeatures(Channel_Features[0],Channel_Features[1])
+                self.channelOrderingFormatFeatures(Channel_Features[0],Channel_Features[1],Channel_Features[2])
                 if info:
                     print("Channel Ordering Features, New Feature Shape:", self.X_train.shape[1:])
             if Channel_Labels != None:
-                self.channelOrderingFormatLabels(Channel_Labels[0],Channel_Labels[1])
+                self.channelOrderingFormatLabels(Channel_Labels[0],Channel_Labels[1],Channel_Features[2])
                 if info:
                     print("Channel Ordering Label, New Label Shape:", self.X_train.shape[1:])
             if info:  
@@ -75,22 +75,22 @@ class DataSlice:
     def loadLabelTest(self,data):
         self.y_test = data
 
-    def channelOrderingFormatFeatures(self,img_rows,img_cols):
-        self.X_train,self.X_test,input_shape = self.channelOrderingFormat(self.X_train,self.X_test,img_rows,img_cols)
+    def channelOrderingFormatFeatures(self,img_rows,img_cols,c1):
+        self.X_train,self.X_test,input_shape = self.channelOrderingFormat(self.X_train,self.X_test,img_rows,img_cols,c1,c1)
         return input_shape
         
-    def channelOrderingFormatLabels(self,img_rows,img_cols):
-        self.y_train, self.y_test,input_shape = self.channelOrderingFormat(self.y_train, self.y_test,img_rows,img_cols)
+    def channelOrderingFormatLabels(self,img_rows,img_cols,c1):
+        self.y_train, self.y_test,input_shape = self.channelOrderingFormat(self.y_train, self.y_test,img_rows,img_cols,c1,c1)
         return input_shape
 
-    def channelOrderingFormat(self,Feat_train,Feat_test,img_rows,img_cols):
-        if keras.backend.image_data_format() == 'channels_first':
-            Feat_train = Feat_train.reshape(Feat_train.shape[0], 1, img_rows, img_cols)
-            Feat_test = Feat_test.reshape(Feat_test.shape[0], 1, img_rows, img_cols)
+    def channelOrderingFormat(Feat_train,Feat_test,img_rows,img_cols,c1,c2):
+        if K.image_data_format() == 'channels_first':
+            Feat_train = Feat_train.reshape(Feat_train.shape[0], c1, img_rows, img_cols)
+            Feat_test = Feat_test.reshape(Feat_test.shape[0], c2, img_rows, img_cols)
             input_shape = (1, img_rows, img_cols)
         else:
-            Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, 1)
-            Feat_test = Feat_test.reshape(Feat_test.shape[0], img_rows, img_cols, 1)
+            Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, c1)
+            Feat_test = Feat_test.reshape(Feat_test.shape[0], img_rows, img_cols, c2)
             input_shape = (img_rows, img_cols, 1)  
         return Feat_train, Feat_test, input_shape
 

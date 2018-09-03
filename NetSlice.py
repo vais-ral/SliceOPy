@@ -55,10 +55,18 @@ class NetSlice:
     def buildModel(self):
             return S.ModelBackend(self,self.hiddenLayers)
  
-    def loadModel(self,name,customObject):
-        #Get Current Working directory
-        dir_path = os.getcwd()+"/Model_Saves/"+name
-        
+    def loadModel(self,name,customObject,Setting=0):
+        #Setting = 0 = Deafult save path
+        #Setting = 1 = name is path of load
+        if Setting == 0:
+            #Get Current Working directory
+            dir_path = os.getcwd()+"/Model_Saves/"+name
+        elif Setting == 1:
+            dir_path = name
+        else:
+            sys.stderr.write("Incorrect Setting Value, Possible Choices are 0 and 1.\n")
+
+
         self.model = S.userLoadModel(dir_path,name,customObject)
 
         try:
@@ -79,9 +87,18 @@ class NetSlice:
         for item in self.historyKeys:
             self.history[item] = []
 
-    def saveModel(self,name):
+    def saveModel(self,name,Setting=0):
+        #Setting = 0 = Deafult save path
+        #Setting = 1 = name is path of load
         #Get Current Working directory
-        dir_path = os.getcwd()+"/Model_Saves/"
+        if Setting == 0:
+            #Get Current Working directory
+            dir_path = os.getcwd()+"/Model_Saves/"
+        elif Setting == 1:
+            dir_path = name
+        else:
+            sys.stderr.write("Incorrect Setting Value, Possible Choices are 0 and 1.\n")
+
   
         #Check if directory exisits, create if not
         if not os.path.exists(dir_path):
@@ -161,7 +178,7 @@ class NetSlice:
             labels= np.array(labels)
             
             if Channel_Ordering != None:
-                feat , labels,shape = S.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+                feat , labels,shape = DataSlice.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
