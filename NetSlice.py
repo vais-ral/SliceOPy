@@ -163,22 +163,24 @@ class NetSlice:
                 self.saveModel(saveAll)
         
         
-    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering=None):
+    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering=None,Info=None):
 
         for epoch in range(0,Epochs):
             feat = []
             labels = []
             
             for i in range(0,BatchSize):
-                item = dataGenFunc()
+                item = dataGenFunc(25,25,25,Info,3,0.2)
                 feat.append(item[0])
                 labels.append(item[1])
+
                 
             feat = np.array(feat)
             labels= np.array(labels)
-            
+            labels = DataSlice.convertOneHot(labels,20)
+            print(labels.shape)
             if Channel_Ordering != None:
-                feat , labels,shape = DataSlice.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+                feat , test ,shape= DataSlice.channelOrderingFormat(feat, feat,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
@@ -197,11 +199,12 @@ class NetSlice:
         labels= np.array(labels)
         
         if Channel_Ordering != None:
-            feat , labels,shape = S.channelOrderingFormat(feat, labels,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+            feat , test,shape = S.channelOrderingFormat(feat, feat,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
 #
 #        feat = np.array(feat).reshape(len(feat),256,256)
 #        labels = np.array(labels).reshape(len(feat),256,256)
 #        feat , labels, shape = S.channelOrderingFormat(feat,labels,256,256)  
+	
         predicted = self.predictModel(feat)
         print(feat[0].shape,labels[0].shape,predicted[0].shape)
 

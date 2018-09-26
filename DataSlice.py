@@ -7,6 +7,7 @@ Created on Thu Aug  9 13:26:22 2018
 import math
 import numpy as np
 import keras
+import keras.backend as K
 
 class DataSlice:
 
@@ -135,7 +136,7 @@ class DataSlice:
         self.y_train = self.convertOneHot(self.y_train,outSize)
         self.y_test = self.convertOneHot(self.y_test,outSize)
 
-    def convertOneHot(self,labels,out):
+    def convertOneHot(labels,out):
         label = np.zeros((labels.shape[0],out),dtype=np.float32)
         for i in range(0,len(labels)):
             if labels[i] == 0:
