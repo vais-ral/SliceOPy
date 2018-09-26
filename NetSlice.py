@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from .DataSlice import DataSlice
+import keras.backend as K
 import pickle
 
 class NetSlice:
@@ -162,15 +163,23 @@ class NetSlice:
             if saveAll != None:
                 self.saveModel(saveAll)
         
-        
-    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering=None,Info=None):
+    def channelOrderingFormat(self,Feat_train,img_rows,img_cols,c1):
+        if K.image_data_format() == 'channels_first':
+            Feat_train = Feat_train.reshape(Feat_train.shape[0], c1, img_rows, img_cols)
+            input_shape = (1, img_rows, img_cols)
+        else:
+            Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, c1)
+            input_shape = (img_rows, img_cols, 1)  
+        return Feat_train, input_shape
+
+    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering_Feat=None, Channel_Ordering_Labels=None,Info=None,funcParams = None):
 
         for epoch in range(0,Epochs):
             feat = []
             labels = []
             
             for i in range(0,BatchSize):
-                item = dataGenFunc(25,25,25,Info,3,0.2)
+                item = dataGenFunc(*funcParams)
                 feat.append(item[0])
                 labels.append(item[1])
 
@@ -178,9 +187,13 @@ class NetSlice:
             feat = np.array(feat)
             labels= np.array(labels)
             labels = DataSlice.convertOneHot(labels,20)
-            print(labels.shape)
-            if Channel_Ordering != None:
-                feat , test ,shape= DataSlice.channelOrderingFormat(feat, feat,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+
+            
+            if Channel_Ordering_Feat != None:
+                feat , shape= DataSlice.channelOrderingFormat(feat,Channel_Ordering_Feat[0],Channel_Ordering_Feat[1],Channel_Ordering_Feat[2])
+            if Channel_Ordering_Labels != None:
+                labels , shape= DataSlice.channelOrderingFormat(labels,Channel_Ordering_Labels[0],Channel_Ordering_Labels[1],Channel_Ordering_Labels[2])
+
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
             self.history['loss'].append(loss)
