@@ -172,7 +172,7 @@ class NetSlice:
             input_shape = (img_rows, img_cols, 1)  
         return Feat_train, input_shape
 
-    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering_Feat=None, Channel_Ordering_Labels=None,Info=None,funcParams = None):
+    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering_Feat=None, Channel_Ordering_Labels=None,funcParams = None):
 
         for epoch in range(0,Epochs):
             feat = []
@@ -199,20 +199,20 @@ class NetSlice:
             self.history['loss'].append(loss)
             print("Epochs:",epoch+1, " Loss:",loss)
         
-    def generativeDataTesting(self,dataGenFunc, SampleNumber=100,Threshold=1.0e-4, Channel_Ordering=None):
+    def generativeDataTesting(self,dataGenFunc, SampleNumber=100,Threshold=1.0e-4, Channel_Ordering_Feat=None,funcParams = None):
 #
         feat = []
         labels = []
         for i in range(0,SampleNumber):
-            item = dataGenFunc()
+            item = dataGenFunc(*funcParams)
             feat.append(item[0])
             labels.append(item[1])
             
         feat = np.array(feat)
         labels= np.array(labels)
         
-        if Channel_Ordering != None:
-            feat , test,shape = S.channelOrderingFormat(feat, feat,Channel_Ordering[0],Channel_Ordering[1],Channel_Ordering[2],Channel_Ordering[3])
+        if Channel_Ordering_Feat != None:
+                feat , shape= DataSlice.channelOrderingFormat(feat,Channel_Ordering_Feat[0],Channel_Ordering_Feat[1],Channel_Ordering_Feat[2])
 #
 #        feat = np.array(feat).reshape(len(feat),256,256)
 #        labels = np.array(labels).reshape(len(feat),256,256)
@@ -220,6 +220,7 @@ class NetSlice:
 	
         predicted = self.predictModel(feat)
         print(feat[0].shape,labels[0].shape,predicted[0].shape)
+        print(predicted)
 
 #        fig = plt.figure()
 #        ax = fig.add_subplot(131)

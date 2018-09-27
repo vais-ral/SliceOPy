@@ -84,14 +84,16 @@ class DataSlice:
         self.y_train, self.y_test,input_shape = self.channelOrderingFormat(self.y_train, self.y_test,img_rows,img_cols,c1,c1)
         return input_shape
 
-    def channelOrderingFormat(Feat_train,img_rows,img_cols,c1):
+    def channelOrderingFormat(self,Feat_train,Feat_test,img_rows,img_cols,c1,c2):
         if K.image_data_format() == 'channels_first':
             Feat_train = Feat_train.reshape(Feat_train.shape[0], c1, img_rows, img_cols)
+            Feat_test = Feat_test.reshape(Feat_test.shape[0], c2, img_rows, img_cols)
             input_shape = (1, img_rows, img_cols)
         else:
             Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, c1)
+            Feat_test = Feat_test.reshape(Feat_test.shape[0], img_rows, img_cols,c2)
             input_shape = (img_rows, img_cols, 1)  
-        return Feat_train, input_shape
+        return Feat_train, Feat_test,input_shape
 
     def reBalanceData(self,x,y,Multip):
         
@@ -134,7 +136,7 @@ class DataSlice:
         self.y_train = self.convertOneHot(self.y_train,outSize)
         self.y_test = self.convertOneHot(self.y_test,outSize)
 
-    def convertOneHot(labels,out):
+    def convertOneHot(self,labels,out):
         label = np.zeros((labels.shape[0],out),dtype=np.float32)
         for i in range(0,len(labels)):
             if labels[i] == 0:
