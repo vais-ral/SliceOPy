@@ -21,16 +21,24 @@ def userLoadModel(dir_path,name,customObject):
 def userSaveModel(model,path):
     model.save(path)
 
-def channelOrderingFormat(Feat_train,Feat_test,img_rows,img_cols,c1,c2):
+def convertOneHot(labels,out):
+    
+    label = np.zeros((labels.shape[0],out),dtype=np.float32)
+    for i in range(0,len(labels)):
+        if labels[i] == 0:
+            label[i,labels[i]] = 1
+        else:
+            label[i,labels[i]] = 1
+    return label
+
+def channelOrderingFormat(Feat_train,img_rows,img_cols,c1):
     if K.image_data_format() == 'channels_first':
         Feat_train = Feat_train.reshape(Feat_train.shape[0], c1, img_rows, img_cols)
-        Feat_test = Feat_test.reshape(Feat_test.shape[0], c2, img_rows, img_cols)
         input_shape = (1, img_rows, img_cols)
     else:
         Feat_train = Feat_train.reshape(Feat_train.shape[0], img_rows, img_cols, c1)
-        Feat_test = Feat_test.reshape(Feat_test.shape[0], img_rows, img_cols, c2)
         input_shape = (img_rows, img_cols, 1)  
-    return Feat_train, Feat_test, input_shape           
+    return Feat_train, input_shape           
 
 def userCompileModel(model,Optimizer,Loss,Metrics):
     model.compile(optimizer=Optimizer, loss=Loss, metrics=Metrics)

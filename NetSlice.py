@@ -172,12 +172,12 @@ class NetSlice:
             input_shape = (img_rows, img_cols, 1)  
         return Feat_train, input_shape
 
-    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering_Feat=None, Channel_Ordering_Labels=None,funcParams = None):
+    def generativeDataTrain(self,dataGenFunc, BatchSize=1, Epochs=100, Channel_Ordering_Feat=None, Channel_Ordering_Labels=None,funcParams = None, OneHot=None):
 
         for epoch in range(0,Epochs):
             feat = []
             labels = []
-            
+                            
             for i in range(0,BatchSize):
                 item = dataGenFunc(*funcParams)
                 feat.append(item[0])
@@ -186,13 +186,13 @@ class NetSlice:
                 
             feat = np.array(feat)
             labels= np.array(labels)
-            labels = DataSlice.convertOneHot(labels,20)
 
-            
+            if OneHot != None:
+                labels = S.convertOneHot(labels,OneHot)           
             if Channel_Ordering_Feat != None:
-                feat , shape= DataSlice.channelOrderingFormat(feat,Channel_Ordering_Feat[0],Channel_Ordering_Feat[1],Channel_Ordering_Feat[2])
+                feat , shape= S.channelOrderingFormat(feat,Channel_Ordering_Feat[0],Channel_Ordering_Feat[1],Channel_Ordering_Feat[2])
             if Channel_Ordering_Labels != None:
-                labels , shape= DataSlice.channelOrderingFormat(labels,Channel_Ordering_Labels[0],Channel_Ordering_Labels[1],Channel_Ordering_Labels[2])
+                labels , shape= S.channelOrderingFormat(labels,Channel_Ordering_Labels[0],Channel_Ordering_Labels[1],Channel_Ordering_Labels[2])
 
             loss = S.userTrainOnBatch(self.model,feat,labels)
             
